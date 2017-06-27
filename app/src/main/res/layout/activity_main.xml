@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools" android:id="@+id/container"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.andy.mymediacodec.MainActivity">
+
+
+    <Button
+        android:id="@+id/button_encode_decode_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Encode/Decode from camera"/>
+
+    <Button
+        android:id="@+id/button_decode_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:text="Decode from local yuv video"/>
+
+    <com.andy.mymediacodec.CameraSurfaceView
+        android:id="@+id/surface_preview"
+        android:layout_width="360dp"
+        android:layout_height="240dp"
+        android:layout_marginTop="5dp"
+        app:layout_constraintBottom_toBottomOf="@+id/navigation"
+        app:layout_constraintLeft_toLeftOf="parent" app:layout_constraintTop_toTopOf="@+id/message"
+        />
+
+    <SurfaceView
+        android:id="@+id/surface_decode"
+        android:layout_marginTop="5dp"
+        android:layout_width="200dp"
+        android:layout_height="150dp" />
+
+    <android.support.design.widget.BottomNavigationView android:id="@+id/navigation"
+        android:layout_width="0dp" android:layout_height="wrap_content"
+        android:layout_marginEnd="0dp" android:layout_marginStart="0dp"
+        android:background="?android:attr/windowBackground"
+        app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" app:menu="@menu/navigation" />
+
+</LinearLayout>
