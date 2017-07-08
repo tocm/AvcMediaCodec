@@ -13,6 +13,7 @@ package com.andy.mymediacodec.utils;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -20,6 +21,9 @@ import android.net.Uri;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
+
+import java.lang.reflect.Field;
 
 
 /**
@@ -289,5 +293,20 @@ public class PermissionUtils {
 
         void getPermissionFailed();
     }
+
+
+    public static void getAllPermissions(Context context) {
+        final Field[] manifestFields = Manifest.permission.class.getDeclaredFields();
+        for (final Field field : manifestFields) {
+            Log.d(TAG,"All Permission name = "+field.getName());
+
+//             List<PermissionGroupInfo>  permissionGroupInfos = context.getPackageManager().getAllPermissionGroups();
+//            sb.append("<uses-permission android:name=\"android.permission."
+//                    + field.getName() + "\"/>");
+//            sb.append("\n");
+
+        }
+    }
+
 
 }

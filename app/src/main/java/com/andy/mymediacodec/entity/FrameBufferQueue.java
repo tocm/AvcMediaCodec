@@ -4,6 +4,8 @@ import android.util.Log;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
+import static android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME;
+
 /**
  * Created by Andy.chen on 2017/6/27.
  */
@@ -19,8 +21,14 @@ public class FrameBufferQueue {
 
     public synchronized void pushFrameData(FrameEntity frameEntity) {
         if (mFrameQueue.size() >= DECODER_QUEUE_BUF_SIZE) {
-            Log.d(TAG,"==== drop frame ====== "+Thread.currentThread().getName() );
-            mFrameQueue.poll();
+            Log.d(TAG,"==== drop frame ====== "+Thread.currentThread().getName());
+            FrameEntity checkKeyFrameEntity = mFrameQueue.poll();
+            //Avoid drop the I-KEY-FRAME
+            if(checkKeyFrameEntity != null && checkKeyFrameEntity.getFrameType() == BUFFER_FLAG_KEY_FRAME) {
+                Log.d(TAG,"==== not drop I frame ====== ");
+                mFrameQueue.clear();
+                mFrameQueue.offer(checkKeyFrameEntity);
+            }
         }
         mFrameQueue.offer(frameEntity);
       //  Log.d(TAG,"offer queue id= "+frameEntity.getId() +", size =" + mFrameQueue.size()+", frame size = "+frameEntity.getBuf().length);

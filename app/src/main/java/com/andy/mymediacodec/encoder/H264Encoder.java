@@ -62,8 +62,13 @@ public class H264Encoder {
 
     @SuppressLint("NewApi")
     private void configureEncoder() throws IOException {
+
+        MediaCodecInfo mediaCodecInfo = AvcUtils.selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC);
+        int colorFormat = AvcUtils.selectColorFormat(mediaCodecInfo,MediaFormat.MIMETYPE_VIDEO_AVC);
+        Log.d(TAG,"encoder color format = "+colorFormat);
+
         MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, AvcUtils.WIDTH, AvcUtils.HEIGHT);
-        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
+        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, colorFormat);
         mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, AvcUtils.BITRATE);
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, AvcUtils.FPS);
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, AvcUtils.I_FRAME_INTERVAL);// 10 seconds between I-frames
@@ -210,6 +215,7 @@ public class H264Encoder {
                     System.arraycopy(outData, 0, keyframe, mHeaderCfgFrameBuf.length, outData.length);
                     mOutputStream.write(keyframe, 0, keyframe.length);
 
+                    frameEntity.setFrameType(BUFFER_FLAG_KEY_FRAME);
                     //print log
 //                    AvcUtils.printByteData("Encoder I-KEY-FRAME HEX ",keyframe);
 

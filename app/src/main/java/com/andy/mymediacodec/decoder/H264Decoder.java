@@ -2,6 +2,7 @@ package com.andy.mymediacodec.decoder;
 
 import android.media.Image;
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Build;
 import android.os.Environment;
@@ -54,9 +55,14 @@ public class H264Decoder {
         AvcUtils.printByteData("Decoder SPS", nalSPS.array());
         AvcUtils.printByteData("Decoder PPS", nalPPS.array());
 
+        //check support MIME
+        MediaCodecInfo mediaCodecInfo = AvcUtils.selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC);
+        int colorFormat = AvcUtils.selectColorFormat(mediaCodecInfo,MediaFormat.MIMETYPE_VIDEO_AVC);
+        Log.d(TAG,"decoder color format = "+colorFormat);
         MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
         mediaFormat.setByteBuffer("csd-0", nalSPS);
         mediaFormat.setByteBuffer("csd-1", nalPPS);
+        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,colorFormat);
         try {
             mDecoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         } catch (IOException e) {
@@ -254,7 +260,16 @@ public class H264Decoder {
                         int decodeIndex = mDecoder.dequeueOutputBuffer(mBufferInfo, AvcUtils.TIMEOUT_US);
                         if (decodeIndex >= 0) {
                             //save image
-                            //   renderToImage(decodeIndex);
+//                               renderToImage(decodeIndex);
+                            ByteBuffer byteBuffer = mDecoder.getOutputBuffer(decodeIndex);
+                            if(byteBuffer != null) {
+                                byte[] buf = new byte[byteBuffer.capacity()];
+                                byteBuffer.get(buf);
+                                AvcUtils.printByteData("OutputBuffer is ready to be processed or rendered::",buf);
+//                                AvcUtils.compressToJpeg(buf,byteBuffer.capacity(),AvcUtils.WIDTH,AvcUtils.HEIGHT);
+                            }
+
+
                             // setting true is telling system to render frame onto Surface
                             mDecoder.releaseOutputBuffer(decodeIndex, true);
                             //count the fps of render
@@ -267,6 +282,7 @@ public class H264Decoder {
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
+                        Log.d(TAG, "==== Render failed exception ====== ");
                         running = false;
                         return;
                     }
@@ -280,6 +296,4 @@ public class H264Decoder {
             }
         }
     }
-
-
 }

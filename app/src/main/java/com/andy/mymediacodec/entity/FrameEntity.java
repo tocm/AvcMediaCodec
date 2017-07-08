@@ -9,6 +9,7 @@ public class FrameEntity {
     private byte[] buf;
     private int size;
     private long timestamp;
+    private int frameType;// I,B,P frame
 
     public String getId() {
         return id;
@@ -40,5 +41,13 @@ public class FrameEntity {
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public int getFrameType() {
+        return frameType;
+    }
+
+    public void setFrameType(int frameType) {
+        this.frameType = frameType;
     }
 }
