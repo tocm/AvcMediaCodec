@@ -3,7 +3,6 @@ package com.andy.mymediacodec;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
@@ -14,6 +13,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.andy.mymediacodec.decoder.H264Decoder;
 import com.andy.mymediacodec.encoder.H264Encoder;
@@ -22,9 +22,12 @@ import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AvcUtils;
 import com.andy.mymediacodec.utils.PermissionUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+
+import static com.andy.mymediacodec.utils.AvcUtils.DECODE_FILE_PATH;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
@@ -88,8 +91,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 mDecodingLocStreamFlag = !mDecodingLocStreamFlag;
-                mH264LocFileStream = AvcUtils.getFileInputStream(Environment.getExternalStorageDirectory() + "/AvcEncode/testEncode.h264");
+                mH264LocFileStream = AvcUtils.getFileInputStream(DECODE_FILE_PATH);
                 if(mH264LocFileStream == null) {
+                    Toast.makeText(MainActivity.this,"Please record a video from camera first",Toast.LENGTH_SHORT);
                     return;
                 }
                 if(mDecodingLocStreamFlag) {
@@ -121,6 +125,10 @@ public class MainActivity extends AppCompatActivity {
             mBtnDecoderLocVideo.setEnabled(true);
         }
 
+        File file = new File(DECODE_FILE_PATH);
+        if (file.exists()) {
+            mBtnDecoderLocVideo.setEnabled(true);
+        }
     }
 
     private void readStreamData() {
