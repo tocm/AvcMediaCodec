@@ -62,7 +62,8 @@ public class H264Decoder {
         MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
         mediaFormat.setByteBuffer("csd-0", nalSPS);
         mediaFormat.setByteBuffer("csd-1", nalPPS);
-        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,colorFormat);
+        //Attention: if add below code it would be happen [dequeueBuffer failed: BAD_VALUE(-22).]
+      //  mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,colorFormat);
         try {
             mDecoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         } catch (IOException e) {

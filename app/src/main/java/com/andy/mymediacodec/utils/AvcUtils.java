@@ -31,6 +31,8 @@ public final class AvcUtils {
     public final static String DECODE_FILE_PATH = Environment.getExternalStorageDirectory() + "/AvcEncode/testEncode.h264";
     public final static String SDCARD_TEMP_FILE_DIR = "AvcEncode";
     public final static String SDCARD_TEMP_FILE_NAME = "testEncode.h264";
+    public final static String SDCARD_TEMP_FILE_NAME_YUV = "test_420_1280_720.yuv";
+
     public final static int WIDTH = 1280;
     public final static int HEIGHT = 720;
     public final static int BITRATE = 6000000;//Kbps

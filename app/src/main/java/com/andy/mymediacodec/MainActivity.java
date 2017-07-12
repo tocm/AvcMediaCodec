@@ -3,6 +3,7 @@ package com.andy.mymediacodec;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
@@ -20,9 +21,12 @@ import com.andy.mymediacodec.encoder.H264Encoder;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AvcUtils;
-import com.andy.mymediacodec.utils.PermissionUtils;
+import com.andy.mymediacodec.utils.FileUtils;
+import com.tools.permissionlib.PermissionUtils;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -43,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
     Button mBtnEncodeCameraYuv;
     Button mBtnDecoderLocVideo;
     boolean mDecodingLocStreamFlag = false;
+
+    //Audio
+    AudioCapture mAudioCapture;
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
@@ -69,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main);
         mTextMessage = (TextView) findViewById(R.id.message);
         mCameraSurfaceView = (CameraSurfaceView) findViewById(R.id.surface_preview);
@@ -78,6 +84,9 @@ public class MainActivity extends AppCompatActivity {
 
         mBtnEncodeCameraYuv = (Button) this.findViewById(R.id.button_encode_decode_video);
         mBtnDecoderLocVideo = (Button) this.findViewById(R.id.button_decode_video);
+
+
+
 
         mBtnEncodeCameraYuv.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -117,18 +126,17 @@ public class MainActivity extends AppCompatActivity {
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            mPermissionUtils = new PermissionUtils(this);
-            mPermissionUtils.setOnApplyPermissionListener(permissionListener);
-            mPermissionUtils.applyPermissions();
+            mPermissionUtils = new PermissionUtils(this, permissionListener);
         } else {
             mBtnEncodeCameraYuv.setEnabled(true);
-            mBtnDecoderLocVideo.setEnabled(true);
+
+            File file = new File(DECODE_FILE_PATH);
+            if (file.exists()) {
+                mBtnDecoderLocVideo.setEnabled(true);
+            }
         }
 
-        File file = new File(DECODE_FILE_PATH);
-        if (file.exists()) {
-            mBtnDecoderLocVideo.setEnabled(true);
-        }
+
     }
 
     private void readStreamData() {
@@ -243,7 +251,20 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private BufferedOutputStream mOutputStreamYuv;
+    private void createRawYuvFile() {
+        String folderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
+        File fileFolder = FileUtils.createFolder(folderPath);
+        try {
+            File file = FileUtils.createFile(fileFolder, AvcUtils.SDCARD_TEMP_FILE_NAME_YUV);
+            mOutputStreamYuv = new BufferedOutputStream(new FileOutputStream(file));
+            Log.i(TAG, "mOutputStreamYuv initialized");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     private void startCamera() {
+        mAudioCapture = new AudioCapture();
         if(mCameraSurfaceView != null) {
             try {
                 mCameraSurfaceView.setVideoFrameListener(new CameraSurfaceView.VideoFrameListener() {
@@ -255,23 +276,38 @@ public class MainActivity extends AppCompatActivity {
                             frameEntity.setBuf(data);
                             frameEntity.setTimestamp(System.currentTimeMillis());
 
+
                             //get the original YUV data push to encoder
                             mFrameBufferQueueEncoder.pushFrameData(frameEntity);
+                            //sava yuv file
+                            /*
+                            try {
+                                if(mOutputStreamYuv != null) {
+                                    mOutputStreamYuv.write(data);
+                                    mOutputStreamYuv.flush();
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            */
                         }
                     }
                 });
                 boolean isSuccess = mCameraSurfaceView.startCamera();
                 Log.d(TAG,"startCamera isSuccess = "+isSuccess);
                 if (isSuccess) {
+//                    createRawYuvFile();
                     startEncoder();
                     startDecoder();
+
+                    if(mAudioCapture != null)
+                        mAudioCapture.startRecord();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
-
     private void startEncoder() {
         if(mH264Encoder == null) {
             if(mFrameBufferQueueEncoder == null) {
@@ -327,6 +363,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        if(mOutputStreamYuv != null) {
+            try {
+                mOutputStreamYuv.flush();
+                mOutputStreamYuv.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         mDecodingLocStreamFlag = false;
         if(mCameraSurfaceView != null) {
             mCameraSurfaceView.stop();
@@ -337,6 +381,9 @@ public class MainActivity extends AppCompatActivity {
         if(mH264Decoder != null) {
             mH264Decoder.stopDecoderThread();
         }
+
+        if(mAudioCapture != null)
+            mAudioCapture.stopRecord();
     }
 
     @Override
