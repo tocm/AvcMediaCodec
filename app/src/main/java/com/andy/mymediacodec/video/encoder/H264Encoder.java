@@ -1,4 +1,4 @@
-package com.andy.mymediacodec.encoder;
+package com.andy.mymediacodec.video.encoder;
 
 import android.annotation.SuppressLint;
 import android.media.MediaCodec;
@@ -36,6 +36,7 @@ public class H264Encoder {
     private EncoderThread mEncodeThread;
     private long mPresentationTimeUs = 0;
     private int mGenerateIndex = 0;
+    private long mEncoderLastGap = 0;
 
     public H264Encoder(FrameBufferQueue frameBufferQueue) {
         Log.d(TAG, "construct");
@@ -144,8 +145,10 @@ public class H264Encoder {
         public void run() {
             while (isRunning) {
                 if (!mFrameBufferQueue.isEmptyQueue()) {
+                    Log.d(TAG,"======= encoder one frame begin ======");
                     FrameEntity frameEntity = mFrameBufferQueue.pollFrameData();
                     pushDataEncoder(frameEntity);
+                    Log.d(TAG,"======= encoder one frame end ======");
 
                 } else {
                     try {
@@ -174,7 +177,7 @@ public class H264Encoder {
             ByteBuffer[] inputBuffers = mEncoder.getInputBuffers();
             ByteBuffer[] outputBuffers = mEncoder.getOutputBuffers();
             int inputBufferIndex = mEncoder.dequeueInputBuffer(-1);
-            Log.d(TAG, " offerEncoder InputBuffer = " + inputBufferIndex);
+            Log.d(TAG, " encoder InputBuffer = " + inputBufferIndex);
             if (inputBufferIndex >= 0) {
                 long pts = computePresentationTime(mGenerateIndex);
 //                long pts = computerPts();
@@ -185,16 +188,23 @@ public class H264Encoder {
 
                 mEncoder.queueInputBuffer(inputBufferIndex, 0, yuv420sp.length, pts, 0);
                 mGenerateIndex += 1;
+
             }
 
             MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
             int outputBufferIndex = mEncoder.dequeueOutputBuffer(bufferInfo, AvcUtils.TIMEOUT_US);
-            Log.d(TAG, " offerEncoder outputBufferIndex = " + outputBufferIndex);
+            Log.d(TAG, " encoder outputBufferIndex = " + outputBufferIndex);
+            //每次编码完成的数据不一定能一次吐出 所以用while循环，保证编码器吐出所有数据
             while (outputBufferIndex >= 0) {
+                //拿到用于存放数据的Buffer
                 ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+                //BufferInfo内定义了此数据块的大小
                 byte[] outData = new byte[bufferInfo.size];
+                //将Buffer内的数据取出到字节数组中
                 outputBuffer.get(outData);
-                Log.d(TAG, " offerEncoder bufferInfo.flags = " + bufferInfo.flags);
+                //数据取出后一定记得清空此Buffer MediaCodec是循环使用这些Buffer的，不清空下次会得到同样的数据,严重会导致在解码时候的数据前几帧花屏，后续慢慢正常。
+                outputBuffer.clear();
+                Log.d(TAG, " encoder ===> successfully bufferInfo.flags = " + bufferInfo.flags);
                 if (bufferInfo.flags == BUFFER_FLAG_CODEC_CONFIG) {
                     //header configuration frame EXP: SPS/PPS
                     mHeaderCfgFrameBuf = new byte[bufferInfo.size];
@@ -206,7 +216,7 @@ public class H264Encoder {
 //                    AvcUtils.printByteData("Encoder NAL SPS/PPS HEX ",mHeaderCfgFrameBuf);
                 } else if (bufferInfo.flags == BUFFER_FLAG_KEY_FRAME) {
                     /**
-                     * IDR帧：IDR帧属于I 帧。解码器收到IDR frame时，将所有的参考帧队列丢弃 ，这点是所有I 帧共有的特性，
+                     * IDR帧：IDR帧属于I 帧。编码器收到IDR frame时，将所有的参考帧队列丢弃 ，这点是所有I 帧共有的特性，
                      * 但是收到IDR帧时，解码器另外需要做的工作就是：把所有的PPS和SPS参数进行更新。
                      * 由此可见，在编码器端，每发一个 IDR，就相应地发一个 PPS&SPS_nal_unit
                      */
@@ -222,21 +232,24 @@ public class H264Encoder {
                 } else {
                     mOutputStream.write(outData, 0, outData.length);
                 }
+                //AvcUtils.printByteData("=>Encoder frame ",outData);
+
                 //push data to decoding
                 if (mAvcDataFrameListener != null) {
                     frameEntity.setBuf(outData);
                     frameEntity.setSize(outData.length);
-                    Log.d(TAG, "=====after Encoder frame id = " + frameEntity.getId() + ", spent time = " + (System.currentTimeMillis() - frameEntity.getTimestamp()));
-
+                    Log.d(TAG, "encoder finish frame id = " + frameEntity.getId() + ", spent time = " + (System.currentTimeMillis() - frameEntity.getTimestamp()));
                     mAvcDataFrameListener.onAvcEncoderFrame(frameEntity);
                 }
 
+                ////此操作一定要做，不然MediaCodec用完所有的Buffer后 将不能向外输出数据
                 mEncoder.releaseOutputBuffer(outputBufferIndex, false);
+                //再次获取数据，如果没有数据输出则outputIndex=-1 循环结
                 outputBufferIndex = mEncoder.dequeueOutputBuffer(bufferInfo, AvcUtils.TIMEOUT_US);
-
-
+                long gap = System.currentTimeMillis() - mEncoderLastGap;
+                Log.d(TAG,"Encoder once frame gap = "+gap);
+                mEncoderLastGap = System.currentTimeMillis();
             }
-
         } catch (Throwable t) {
             t.printStackTrace();
         }

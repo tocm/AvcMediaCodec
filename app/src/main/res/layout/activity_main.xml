@@ -21,7 +21,7 @@
         android:layout_marginTop="5dp"
         android:text="Decode from local yuv video"/>
 
-    <com.andy.mymediacodec.CameraSurfaceView
+    <com.andy.mymediacodec.video.CameraYuvCapture
         android:id="@+id/surface_preview"
         android:layout_width="360dp"
         android:layout_height="240dp"

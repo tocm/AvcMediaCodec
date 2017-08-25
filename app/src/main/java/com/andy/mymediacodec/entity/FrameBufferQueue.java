@@ -21,17 +21,17 @@ public class FrameBufferQueue {
 
     public synchronized void pushFrameData(FrameEntity frameEntity) {
         if (mFrameQueue.size() >= DECODER_QUEUE_BUF_SIZE) {
-            Log.d(TAG,"==== drop frame ====== "+Thread.currentThread().getName());
+            Log.d(TAG,"==== drop frame ======  id = "+frameEntity.getId());
             FrameEntity checkKeyFrameEntity = mFrameQueue.poll();
             //Avoid drop the I-KEY-FRAME
             if(checkKeyFrameEntity != null && checkKeyFrameEntity.getFrameType() == BUFFER_FLAG_KEY_FRAME) {
-                Log.d(TAG,"==== not drop I frame ====== ");
+                Log.d(TAG,"==== not drop I frame ======  id= "+frameEntity.getId());
                 mFrameQueue.clear();
                 mFrameQueue.offer(checkKeyFrameEntity);
             }
         }
         mFrameQueue.offer(frameEntity);
-      //  Log.d(TAG,"offer queue id= "+frameEntity.getId() +", size =" + mFrameQueue.size()+", frame size = "+frameEntity.getBuf().length);
+        Log.d(TAG,"offer queue id= "+frameEntity.getId() +", size =" + mFrameQueue.size()+", frame size = "+frameEntity.getBuf().length);
     }
     public synchronized void clearQueue() {
         if(mFrameQueue != null) {
@@ -42,7 +42,9 @@ public class FrameBufferQueue {
 
     public synchronized FrameEntity pollFrameData() {
         FrameEntity frame = null;
-        if(mFrameQueue.size() > 0) {
+        int queueSize = mFrameQueue.size();
+        Log.d(TAG,"current queue size = "+ queueSize);
+        if(queueSize > 0) {
             frame = mFrameQueue.poll();
             Log.d(TAG,"after queue poll ,size = "+ mFrameQueue.size());
         }

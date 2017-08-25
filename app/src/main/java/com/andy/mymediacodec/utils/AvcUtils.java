@@ -155,12 +155,15 @@ public final class AvcUtils {
         int framesize = width * height;
         int i = 0, j = 0;
         System.arraycopy(nv21, 0, nv12, 0, framesize);
+        //Y
         for (i = 0; i < framesize; i++) {
             nv12[i] = nv21[i];
         }
+        //U
         for (j = 0; j < framesize / 2; j += 2) {
             nv12[framesize + j - 1] = nv21[j + framesize];
         }
+        //V
         for (j = 0; j < framesize / 2; j += 2) {
             nv12[framesize + j] = nv21[j + framesize - 1];
         }

@@ -1,4 +1,4 @@
-package com.andy.mymediacodec.decoder;
+package com.andy.mymediacodec.video.decoder;
 
 import android.media.Image;
 import android.media.MediaCodec;
@@ -47,7 +47,7 @@ public class H264Decoder {
     }
 
     private void configDecoder(int width, int height, ByteBuffer nalSPS, ByteBuffer nalPPS) {
-        Log.d(TAG, "configDecoder entry ");
+        Log.d(TAG, "configDecoder entry width = "+width +",height = "+height);
         if (nalSPS == null && nalPPS == null) {
             return;
         }

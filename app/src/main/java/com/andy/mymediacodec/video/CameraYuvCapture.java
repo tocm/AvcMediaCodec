@@ -1,4 +1,4 @@
-package com.andy.mymediacodec;
+package com.andy.mymediacodec.video;
 
 import android.app.Activity;
 import android.content.Context;
@@ -27,8 +27,8 @@ import java.util.List;
  * Created by Andy.chen on 2017/5/4.
  */
 
-public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
-    private final static String TAG = CameraSurfaceView.class.getSimpleName();
+public class CameraYuvCapture extends SurfaceView implements SurfaceHolder.Callback {
+    private final static String TAG = CameraYuvCapture.class.getSimpleName();
     private final static int ROTATION_OBVERSE_FACE = 2;//正面
     private final static int ROTATION_REVERSE_FACE = 1;//反面
 
@@ -44,28 +44,26 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
     private int mCurrentRotation;
     private int mLastRotation;
 
-
-
-    public CameraSurfaceView(Context context) {
+    public CameraYuvCapture(Context context) {
         super(context);
         mContext = context;
         init();
     }
 
-    public CameraSurfaceView(Context context, AttributeSet attrs) {
+    public CameraYuvCapture(Context context, AttributeSet attrs) {
         super(context, attrs);
         mContext = context;
         init();
     }
 
-    public CameraSurfaceView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public CameraYuvCapture(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         mContext = context;
         init();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public CameraSurfaceView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    public CameraYuvCapture(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         mContext = context;
         init();

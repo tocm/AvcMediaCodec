@@ -1,1 +1,4 @@
 include ':app'
+include ':libPermission'
+project(':libPermission').projectDir = new File('D:\\Workspace_study_pro_code\\PermissionTools\\permissionlib')
+

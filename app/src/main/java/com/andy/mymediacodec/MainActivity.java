@@ -16,8 +16,10 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.andy.mymediacodec.decoder.H264Decoder;
-import com.andy.mymediacodec.encoder.H264Encoder;
+import com.andy.mymediacodec.audio.AudioPcmCapture;
+import com.andy.mymediacodec.video.CameraYuvCapture;
+import com.andy.mymediacodec.video.decoder.H264Decoder;
+import com.andy.mymediacodec.video.encoder.H264Encoder;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AvcUtils;
@@ -37,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
     private TextView mTextMessage;
     private PermissionUtils mPermissionUtils;
-    private CameraSurfaceView mCameraSurfaceView;
+    private CameraYuvCapture mCameraYuvCapture;
     private SurfaceView mSurfaceViewRender;
     private Surface mSurfaceRender;
     private H264Encoder mH264Encoder;
@@ -49,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     boolean mDecodingLocStreamFlag = false;
 
     //Audio
-    AudioCapture mAudioCapture;
+    AudioPcmCapture mAudioPcmCapture;
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
@@ -78,14 +80,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mTextMessage = (TextView) findViewById(R.id.message);
-        mCameraSurfaceView = (CameraSurfaceView) findViewById(R.id.surface_preview);
+        mCameraYuvCapture = (CameraYuvCapture) findViewById(R.id.surface_preview);
         mSurfaceViewRender = (SurfaceView) findViewById(R.id.surface_decode);
         mSurfaceRender = mSurfaceViewRender.getHolder().getSurface();
 
         mBtnEncodeCameraYuv = (Button) this.findViewById(R.id.button_encode_decode_video);
         mBtnDecoderLocVideo = (Button) this.findViewById(R.id.button_decode_video);
-
-
 
 
         mBtnEncodeCameraYuv.setOnClickListener(new View.OnClickListener() {
@@ -101,12 +101,12 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 mDecodingLocStreamFlag = !mDecodingLocStreamFlag;
                 mH264LocFileStream = AvcUtils.getFileInputStream(DECODE_FILE_PATH);
-                if(mH264LocFileStream == null) {
-                    Toast.makeText(MainActivity.this,"Please record a video from camera first",Toast.LENGTH_SHORT);
+                if (mH264LocFileStream == null) {
+                    Toast.makeText(MainActivity.this, "Please record a video from camera first", Toast.LENGTH_SHORT);
                     return;
                 }
-                if(mDecodingLocStreamFlag) {
-                    Log.d(TAG,"-------- START ----------");
+                if (mDecodingLocStreamFlag) {
+                    Log.d(TAG, "-------- START ----------");
                     //start decoder
                     startDecoder();
                     new Thread(new Runnable() {
@@ -125,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             mPermissionUtils = new PermissionUtils(this, permissionListener);
         } else {
             mBtnEncodeCameraYuv.setEnabled(true);
@@ -136,43 +136,43 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-
     }
 
     private void readStreamData() {
         byte[] fileAllStreamBuf = AvcUtils.getBytes(mH264LocFileStream);
+//        AvcUtils.printByteData("read src file byte : ",fileAllStreamBuf);
         int fileStreamSize = 0;
-        if(fileAllStreamBuf != null) {
+        if (fileAllStreamBuf != null) {
             fileStreamSize = fileAllStreamBuf.length;
-            Log.d(TAG,"GET FILE BYTE SIZE = "+fileStreamSize);
+            Log.d(TAG, "GET FILE BYTE SIZE = " + fileStreamSize);
             int decodeEachSize = 1024;
             byte[] decodeBuf = null;
             int startIndex = 0;
             int endIndex = fileStreamSize;
 //            int endIndex = decodeEachSize > fileStreamSize ? fileStreamSize : decodeEachSize ;
             boolean isNalSpsPps = false;
-            while(mDecodingLocStreamFlag) {
-                if(mH264Decoder != null) {
-                    if(!mH264Decoder.isDecodingReady()) {
+            while (mDecodingLocStreamFlag) {
+                if (mH264Decoder != null) {
+                    if (!mH264Decoder.isDecodingReady()) {
                         continue;
                     }
                 }
-
-                if(startIndex >= fileStreamSize) {
+                if (startIndex >= fileStreamSize) {
                     //end of
-                    Log.d(TAG,"======READ STREAM END=========");
+                    Log.d(TAG, "======READ STREAM END=========");
                     break;
                 }
-                int endNalPrefix = AvcUtils.findH264NalPrefix(fileAllStreamBuf,startIndex + 5,fileStreamSize);
-                Log.d(TAG,"find NAL prefix index = "+endNalPrefix);
-                if(endNalPrefix != -1) {
+                //find 0,0,0,1
+                int endNalPrefix = AvcUtils.findH264NalPrefix(fileAllStreamBuf, startIndex + 5, fileStreamSize);
+                Log.d(TAG, "find NAL prefix index = " + endNalPrefix);
+                if (endNalPrefix != -1) {
                     //NAL sps/pps
 //                    while (endNalPrefix < (fileStreamSize - 5)) {
-                        if((fileAllStreamBuf[endNalPrefix + 4] & 0x1f) == AvcUtils.AVC_NAL_TYPE_H264SPS || (fileAllStreamBuf[endNalPrefix + 4] & 0x1f) == AvcUtils.AVC_NAL_TYPE_H264PPS ) {
-                            endNalPrefix = AvcUtils.findH264NalPrefix(fileAllStreamBuf,endNalPrefix + 5,fileStreamSize);
-                            isNalSpsPps = true;
+                    if ((fileAllStreamBuf[endNalPrefix + 4] & 0x1f) == AvcUtils.AVC_NAL_TYPE_H264SPS || (fileAllStreamBuf[endNalPrefix + 4] & 0x1f) == AvcUtils.AVC_NAL_TYPE_H264PPS) {
+                        endNalPrefix = AvcUtils.findH264NalPrefix(fileAllStreamBuf, endNalPrefix + 5, fileStreamSize);
+                        isNalSpsPps = true;
 //                            break;
-                        }
+                    }
 //                    }
 
                     endIndex = endNalPrefix;
@@ -180,26 +180,11 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     endIndex = fileStreamSize;
                 }
-                decodeBuf = Arrays.copyOfRange(fileAllStreamBuf,startIndex,endIndex);
-
-//                startIndex += decodeEachSize;
-//                endIndex = startIndex + decodeEachSize;
-//                if(endIndex > fileStreamSize) {
-//                    //read the end
-//                    endIndex = fileStreamSize;
-//                    Log.d(TAG,"======READ STREAM END=========");
-//                }
-//                if(startIndex > fileStreamSize) {
-//                    //reset
-//                    startIndex = 0;
-//                    endIndex = decodeEachSize;
-//                    Log.d(TAG,"=====READ STREAM RESET========");
-//                    mDecodingLocStreamFlag = false;
-//                    continue;
-//                }
-                Log.d(TAG,"push decoder startIndex = "+startIndex +", endIndex = "+endIndex);
+                decodeBuf = Arrays.copyOfRange(fileAllStreamBuf, startIndex, endIndex);
+                Log.d(TAG, "push decoder startIndex = " + startIndex + ", endIndex = " + endIndex);
+//                AvcUtils.printByteData("read frame data : ",decodeBuf);
                 FrameEntity frameEntity = new FrameEntity();
-                frameEntity.setId(Long.toString(System.currentTimeMillis()));
+                frameEntity.setId("H264 data");
                 frameEntity.setBuf(decodeBuf);
                 frameEntity.setSize(decodeBuf.length);
                 frameEntity.setTimestamp(System.currentTimeMillis());
@@ -208,8 +193,8 @@ public class MainActivity extends AppCompatActivity {
                 //move the start index pointer
                 startIndex = endIndex;
                 try {
-                    int gap = 1000/AvcUtils.FPS;
-                    Log.d(TAG,"read file frame gap = "+gap);
+                    int gap = 1000 / AvcUtils.FPS;
+                    Log.d(TAG, "read file frame gap = " + gap);
                     Thread.sleep(gap);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -252,6 +237,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private BufferedOutputStream mOutputStreamYuv;
+
     private void createRawYuvFile() {
         String folderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
         File fileFolder = FileUtils.createFolder(folderPath);
@@ -263,14 +249,15 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
     private void startCamera() {
-        mAudioCapture = new AudioCapture();
-        if(mCameraSurfaceView != null) {
+        mAudioPcmCapture = new AudioPcmCapture();
+        if (mCameraYuvCapture != null) {
             try {
-                mCameraSurfaceView.setVideoFrameListener(new CameraSurfaceView.VideoFrameListener() {
+                mCameraYuvCapture.setVideoFrameListener(new CameraYuvCapture.VideoFrameListener() {
                     @Override
                     public void onPreviewFrame(byte[] data, int fps) {
-                        if(mH264Encoder != null) {
+                        if (mH264Encoder != null) {
                             FrameEntity frameEntity = new FrameEntity();
                             frameEntity.setId(Long.toString(System.currentTimeMillis()));
                             frameEntity.setBuf(data);
@@ -293,24 +280,25 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-                boolean isSuccess = mCameraSurfaceView.startCamera();
-                Log.d(TAG,"startCamera isSuccess = "+isSuccess);
+                boolean isSuccess = mCameraYuvCapture.startCamera();
+                Log.d(TAG, "startCamera isSuccess = " + isSuccess);
                 if (isSuccess) {
 //                    createRawYuvFile();
                     startEncoder();
                     startDecoder();
 
-                    if(mAudioCapture != null)
-                        mAudioCapture.startRecord();
+                    if (mAudioPcmCapture != null)
+                        mAudioPcmCapture.startRecord();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
+
     private void startEncoder() {
-        if(mH264Encoder == null) {
-            if(mFrameBufferQueueEncoder == null) {
+        if (mH264Encoder == null) {
+            if (mFrameBufferQueueEncoder == null) {
                 mFrameBufferQueueEncoder = new FrameBufferQueue();
             }
             mH264Encoder = new H264Encoder(mFrameBufferQueueEncoder);
@@ -318,8 +306,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onAvcEncoderFrame(FrameEntity frameEntity) {
                     //encoder result
-                    if(mH264Decoder != null) {
-                     //   Log.d("H264Encoder"," onAvcEncoderFrame size = "+size);
+                    if (mH264Decoder != null) {
+                        //   Log.d("H264Encoder"," onAvcEncoderFrame size = "+size);
 //                        FrameEntity frameEntity = new FrameEntity();
 //                        frameEntity.setBuf(frame);
 //                        frameEntity.setSize(size);
@@ -332,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         try {
-                            Thread.sleep(1000/AvcUtils.FPS);
+                            Thread.sleep(1000 / AvcUtils.FPS);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -341,8 +329,8 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onAvcEncoderNALFrame(byte[] nalFrame) {
-                    if(mH264Decoder != null) {
-                     //   Log.d("H264Encoder"," onAvcEncoderNALFrame ");
+                    if (mH264Decoder != null) {
+                        //   Log.d("H264Encoder"," onAvcEncoderNALFrame ");
 //                        mH264Decoder.clearQueue();
 //                        mH264Decoder.configDecoder(AvcUtils.WIDTH, AvcUtils.HEIGHT, ByteBuffer.wrap(nalFrame));
                     }
@@ -353,7 +341,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startDecoder() {
-        if(mH264Decoder == null) {
+        if (mH264Decoder == null) {
             mFrameBufferQueueDecoder = new FrameBufferQueue();
             mH264Decoder = new H264Decoder(mSurfaceRender, mFrameBufferQueueDecoder);
             mH264Decoder.startDecoderThread();
@@ -363,7 +351,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        if(mOutputStreamYuv != null) {
+        if (mOutputStreamYuv != null) {
             try {
                 mOutputStreamYuv.flush();
                 mOutputStreamYuv.close();
@@ -372,43 +360,45 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         mDecodingLocStreamFlag = false;
-        if(mCameraSurfaceView != null) {
-            mCameraSurfaceView.stop();
+        if (mCameraYuvCapture != null) {
+            mCameraYuvCapture.stop();
         }
-        if(mH264Encoder != null) {
+        if (mH264Encoder != null) {
             mH264Encoder.stopEncoderThread();
         }
-        if(mH264Decoder != null) {
+        if (mH264Decoder != null) {
             mH264Decoder.stopDecoderThread();
         }
 
-        if(mAudioCapture != null)
-            mAudioCapture.stopRecord();
+
+
+        if (mAudioPcmCapture != null)
+            mAudioPcmCapture.stopRecord();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if(mCameraSurfaceView != null) {
-            mCameraSurfaceView.resume();
+        if (mCameraYuvCapture != null) {
+            mCameraYuvCapture.resume();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(mCameraSurfaceView != null) {
-            mCameraSurfaceView.destroyCamera();
+        if (mCameraYuvCapture != null) {
+            mCameraYuvCapture.destroyCamera();
         }
-        if(mH264Encoder != null) {
+        if (mH264Encoder != null) {
             mH264Encoder.close();
         }
     }
 
     public static void toHexString(int i) {
-        byte b = (byte)i;
-        Log.d("TEST",Integer.toHexString(b));
-        Log.d("TEST",Integer.toHexString(b & 0xff));
+        byte b = (byte) i;
+        Log.d("TEST", Integer.toHexString(b));
+        Log.d("TEST", Integer.toHexString(b & 0xff));
     }
 
 }
