@@ -5,7 +5,7 @@ import android.media.MediaRecorder;
 import android.os.Environment;
 import android.util.Log;
 
-import com.andy.mymediacodec.audio.decoder.DecodeAAC;
+import com.andy.mymediacodec.audio.decoder.AACDecoder;
 import com.andy.mymediacodec.audio.encoder.AudioEncode;
 import com.andy.mymediacodec.audio.encoder.EncodeAAC;
 import com.andy.mymediacodec.audio.encoder.EncodeWave;
@@ -37,7 +37,7 @@ public class AudioPcmCapture {
     private File mFileRecordPcmPath;
     private FrameBufferQueue mSrcPcmFrameQueue;
     private FrameBufferQueue mAACFrameQueue;
-    private DecodeAAC mDecoderAAC;
+    private AACDecoder mDecoderAAC;
 
     private AudioEncode mAudioEncodeWave;
     private AudioEncode mEncoderAAC;
@@ -88,7 +88,7 @@ public class AudioPcmCapture {
                     frameEntity.setId("Audio AAC");
                     if(mAACFrameQueue == null) {
                         mAACFrameQueue = new FrameBufferQueue();
-                        mDecoderAAC = new DecodeAAC(mAACFrameQueue);
+                        mDecoderAAC = new AACDecoder(mAACFrameQueue);
                         mDecoderAAC.start();
                     }
                     mAACFrameQueue.pushFrameData(frameEntity);

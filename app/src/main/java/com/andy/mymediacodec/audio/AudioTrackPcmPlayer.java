@@ -1,9 +1,11 @@
 package com.andy.mymediacodec.audio;
 
+import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 
-import static android.media.AudioTrack.MODE_STREAM;
+import com.andy.mymediacodec.audio.decoder.AACDecoder;
+import com.andy.mymediacodec.utils.AudioUtils;
 
 /**
  * Created by Andy.chen on 2017/8/4.
@@ -11,12 +13,11 @@ import static android.media.AudioTrack.MODE_STREAM;
 
 public class AudioTrackPcmPlayer {
     private AudioTrack mAudioTrack;
-    private int sampleRate;
 
-    public AudioTrackPcmPlayer(int sampleRateInHz, int channelConfig, int audioFormat,
-                               int bufferSizeInBytes) {
+    public AudioTrackPcmPlayer() {
         if(mAudioTrack == null) {
-            mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRateInHz, channelConfig, audioFormat, bufferSizeInBytes, MODE_STREAM);
+            mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AACDecoder.AudioCfg.sampleRete, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT,
+                    AudioUtils.getAudioBufferSize(), AudioTrack.MODE_STREAM);
         }
     }
 
@@ -33,13 +34,13 @@ public class AudioTrackPcmPlayer {
         }
     }
 
-    public void pushFrame(byte[] buffer) {
+    public void pushFrame(byte[] buffer, int offset, int size) {
         if(buffer == null) {
             return;
         }
         if(mAudioTrack != null) {
             try {
-                mAudioTrack.write(buffer,0,buffer.length);
+                mAudioTrack.write(buffer,offset,size);
                 mAudioTrack.flush();
             } catch (Exception e) {
                 e.printStackTrace();

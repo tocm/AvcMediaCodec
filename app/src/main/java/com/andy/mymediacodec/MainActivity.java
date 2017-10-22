@@ -17,13 +17,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.andy.mymediacodec.audio.AudioPcmCapture;
-import com.andy.mymediacodec.video.CameraYuvCapture;
-import com.andy.mymediacodec.video.decoder.H264Decoder;
-import com.andy.mymediacodec.video.encoder.H264Encoder;
+import com.andy.mymediacodec.audio.decoder.AACDecoder;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AvcUtils;
 import com.andy.mymediacodec.utils.FileUtils;
+import com.andy.mymediacodec.utils.LocalStreamReader;
+import com.andy.mymediacodec.video.CameraYuvCapture;
+import com.andy.mymediacodec.video.decoder.H264Decoder;
+import com.andy.mymediacodec.video.encoder.H264Encoder;
 import com.tools.permissionlib.PermissionUtils;
 
 import java.io.BufferedOutputStream;
@@ -33,7 +35,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import static com.andy.mymediacodec.utils.AvcUtils.DECODE_FILE_PATH;
+import static com.andy.mymediacodec.utils.AvcUtils.DECODE_LOCAL_FILE_PATH_AAC;
+import static com.andy.mymediacodec.utils.AvcUtils.DECODE_LOCAL_FILE_PATH_H264;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
@@ -44,8 +47,11 @@ public class MainActivity extends AppCompatActivity {
     private Surface mSurfaceRender;
     private H264Encoder mH264Encoder;
     private H264Decoder mH264Decoder;
-    private FrameBufferQueue mFrameBufferQueueDecoder;
-    private FrameBufferQueue mFrameBufferQueueEncoder;
+    private AACDecoder mAACDecoder;
+    private FrameBufferQueue mAACDecoderQueue;
+
+    private FrameBufferQueue mH264DecoderQueue;
+    private FrameBufferQueue mH264EncoderQueue;
     Button mBtnEncodeCameraYuv;
     Button mBtnDecoderLocVideo;
     boolean mDecodingLocStreamFlag = false;
@@ -87,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
         mBtnEncodeCameraYuv = (Button) this.findViewById(R.id.button_encode_decode_video);
         mBtnDecoderLocVideo = (Button) this.findViewById(R.id.button_decode_video);
 
-
+        startDecoder();
         mBtnEncodeCameraYuv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -100,21 +106,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 mDecodingLocStreamFlag = !mDecodingLocStreamFlag;
-                mH264LocFileStream = AvcUtils.getFileInputStream(DECODE_FILE_PATH);
-                if (mH264LocFileStream == null) {
-                    Toast.makeText(MainActivity.this, "Please record a video from camera first", Toast.LENGTH_SHORT);
-                    return;
-                }
-                if (mDecodingLocStreamFlag) {
-                    Log.d(TAG, "-------- START ----------");
-                    //start decoder
-                    startDecoder();
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            readStreamData();
-                        }
-                    }).start();
+                if(mDecodingLocStreamFlag) {
+              //      decodeAVCFromLocal();
+
+                    decodeAACFromLocal();
+                }else {
+                    stopDecoder();
                 }
 
             }
@@ -130,11 +127,58 @@ public class MainActivity extends AppCompatActivity {
         } else {
             mBtnEncodeCameraYuv.setEnabled(true);
 
-            File file = new File(DECODE_FILE_PATH);
+            File file = new File(DECODE_LOCAL_FILE_PATH_H264);
             if (file.exists()) {
                 mBtnDecoderLocVideo.setEnabled(true);
             }
         }
+
+    }
+
+    private void decodeAACFromLocal() {
+        Log.d(TAG,"-----decodeAACFromLocal -------");
+
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    LocalStreamReader.readLocalAACFileStreaming(DECODE_LOCAL_FILE_PATH_AAC, new LocalStreamReader.IFrameDataCallback() {
+                        @Override
+                        public void pushData(byte[] buf, int offset, int size) {
+                            if (mAACDecoderQueue != null) {
+                                FrameEntity frameEntity = new FrameEntity();
+                                frameEntity.setId(":: AAC LOCAL ::");
+                                frameEntity.setBuf(buf);
+                                frameEntity.setSize(size);
+                                mAACDecoderQueue.pushFrameData(frameEntity);
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+
+
+    }
+
+    private void decodeAVCFromLocal() {
+        mH264LocFileStream = AvcUtils.getFileInputStream(DECODE_LOCAL_FILE_PATH_H264);
+        if (mH264LocFileStream == null) {
+            Toast.makeText(MainActivity.this, "Please record a video from camera first", Toast.LENGTH_SHORT);
+            return;
+        }
+        Log.d(TAG, "-------- START ----------");
+        //start decoder
+        startDecoder();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                readStreamData();
+            }
+        }).start();
 
     }
 
@@ -188,7 +232,8 @@ public class MainActivity extends AppCompatActivity {
                 frameEntity.setBuf(decodeBuf);
                 frameEntity.setSize(decodeBuf.length);
                 frameEntity.setTimestamp(System.currentTimeMillis());
-                mFrameBufferQueueDecoder.pushFrameData(frameEntity);
+                if(mH264DecoderQueue != null)
+                    mH264DecoderQueue.pushFrameData(frameEntity);
 
                 //move the start index pointer
                 startIndex = endIndex;
@@ -205,7 +250,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-
         if (mPermissionUtils != null) {
             mPermissionUtils.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
@@ -265,7 +309,9 @@ public class MainActivity extends AppCompatActivity {
 
 
                             //get the original YUV data push to encoder
-                            mFrameBufferQueueEncoder.pushFrameData(frameEntity);
+                            if(mH264EncoderQueue != null) {
+                                mH264EncoderQueue.pushFrameData(frameEntity);
+                            }
                             //sava yuv file
                             /*
                             try {
@@ -298,10 +344,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void startEncoder() {
         if (mH264Encoder == null) {
-            if (mFrameBufferQueueEncoder == null) {
-                mFrameBufferQueueEncoder = new FrameBufferQueue();
+            if (mH264EncoderQueue == null) {
+                mH264EncoderQueue = new FrameBufferQueue();
             }
-            mH264Encoder = new H264Encoder(mFrameBufferQueueEncoder);
+            mH264Encoder = new H264Encoder(mH264EncoderQueue);
             mH264Encoder.setAvcDataFrameListener(new H264Encoder.AvcDataFrameListener() {
                 @Override
                 public void onAvcEncoderFrame(FrameEntity frameEntity) {
@@ -315,8 +361,8 @@ public class MainActivity extends AppCompatActivity {
 
 //                        Log.d(TAG,"onAvcEncoderFrame thread = "+Thread.currentThread().getName());
                         //push the decoder and render to screen after get the encoder finish callback
-                        if (mFrameBufferQueueDecoder != null) {
-                            mFrameBufferQueueDecoder.pushFrameData(frameEntity);
+                        if (mH264DecoderQueue != null) {
+                            mH264DecoderQueue.pushFrameData(frameEntity);
                         }
 
                         try {
@@ -342,12 +388,39 @@ public class MainActivity extends AppCompatActivity {
 
     private void startDecoder() {
         if (mH264Decoder == null) {
-            mFrameBufferQueueDecoder = new FrameBufferQueue();
-            mH264Decoder = new H264Decoder(mSurfaceRender, mFrameBufferQueueDecoder);
-            mH264Decoder.startDecoderThread();
+//            mH264DecoderQueue = new FrameBufferQueue();
+//            mH264Decoder = new H264Decoder(mSurfaceRender, mH264DecoderQueue);
+//            mH264Decoder.startDecoderThread();
         }
+
+        if(mAACDecoder == null) {
+            mAACDecoderQueue = new FrameBufferQueue();
+            mAACDecoder = new AACDecoder(mAACDecoderQueue);
+            mAACDecoder.start();
+        }
+
     }
 
+    private void stopDecoder() {
+        if (mCameraYuvCapture != null) {
+            mCameraYuvCapture.stop();
+        }
+        if (mH264Encoder != null) {
+            mH264Encoder.stopEncoderThread();
+        }
+        if (mH264Decoder != null) {
+            mH264Decoder.stopDecoderThread();
+        }
+        if(mAACDecoder != null) {
+            mAACDecoder.stop();
+            mAACDecoder = null;
+            mAACDecoderQueue.clearQueue();
+            mAACDecoderQueue = null;
+        }
+
+        if (mAudioPcmCapture != null)
+            mAudioPcmCapture.stopRecord();
+    }
     @Override
     protected void onStop() {
         super.onStop();
@@ -369,8 +442,12 @@ public class MainActivity extends AppCompatActivity {
         if (mH264Decoder != null) {
             mH264Decoder.stopDecoderThread();
         }
-
-
+        if(mAACDecoder != null) {
+            mAACDecoder.stop();
+            mAACDecoder = null;
+            mAACDecoderQueue.clearQueue();
+            mAACDecoderQueue = null;
+        }
 
         if (mAudioPcmCapture != null)
             mAudioPcmCapture.stopRecord();

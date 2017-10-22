@@ -187,7 +187,7 @@ public class EncodeAAC implements AudioEncode {
                 }
             }
 
-            //notify the AAC frame buffer to top
+            //notify the AAC frame buffer to top layer
             if(mAACFrameListener != null) {
                 FrameEntity frameEntity = new FrameEntity();
                 frameEntity.setBuf(aacPacketBuf);

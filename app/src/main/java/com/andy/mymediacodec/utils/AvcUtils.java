@@ -28,7 +28,8 @@ import java.util.Arrays;
 public final class AvcUtils {
 
     private final static String TAG = AvcUtils.class.getSimpleName();
-    public final static String DECODE_FILE_PATH = Environment.getExternalStorageDirectory() + "/AvcEncode/testEncode.h264";
+    public final static String DECODE_LOCAL_FILE_PATH_H264 = Environment.getExternalStorageDirectory() + "/AvcEncode/testEncode.h264";
+    public final static String DECODE_LOCAL_FILE_PATH_AAC = Environment.getExternalStorageDirectory() + "/AvcEncode/test.aac";
     public final static String SDCARD_TEMP_FILE_DIR = "AvcEncode";
     public final static String SDCARD_TEMP_FILE_NAME = "testEncode.h264";
     public final static String SDCARD_TEMP_FILE_NAME_YUV = "test_420_1280_720.yuv";
@@ -185,6 +186,7 @@ public final class AvcUtils {
         return y_size + c_size * 2;
     }
 
+
     public static void printByteData(String outKey, byte[] buf) {
         if(buf == null) {
             return;
@@ -197,7 +199,7 @@ public final class AvcUtils {
         }
         stringBuffer.append("]");
         Log.d(TAG, outKey  + stringBuffer.toString());
-        Log.d(TAG, "printByte ===> End of spent time =  "+Long.toString(System.currentTimeMillis() - printTime));
+       // Log.d(TAG, "printByte ===> End of spent time =  "+Long.toString(System.currentTimeMillis() - printTime));
     }
 
 
@@ -513,6 +515,119 @@ public final class AvcUtils {
         }
         return null;
     }
+
+    public enum Capture_type{
+        CAPTURE_FRAME_TYPE_NV12;
+    }
+
+    public static void captureYuvToRgba(byte[] yuv, byte[] rgba, int w, int h, Capture_type frameType) {
+//
+//        int i = 0;
+//        int r, g, b = 0;
+//        int count = 0;
+//        byte dst[];
+//        byte y[];
+//        byte uv[];
+//        byte _y;
+//        byte _u;
+//        byte _v;
+//
+//
+//        for(; i < h; ++i)
+//        {
+//            dst = rgba[w * i];
+//            y = yuv + w * i;
+//            uv = yuv + w * h + w * (i / 2);
+//            count = w;
+//
+//            while(count > 1)
+//            {
+//                _y = y[0];
+//                if(frameType == CAPTURE_FRAME_TYPE_NV12)//nv12
+//                {
+//                    _v = uv[0];
+//                    _u = uv[1];
+//                }
+//                else //nv21
+//                {
+//                    _u = uv[0];
+//                    _v = uv[1];
+//                }
+//            /*
+//            r = _y + ((179 * (_v - 128)) >> 7);
+//            g = _y - ((43 * (_u - 128) - 91 * (_v - 128)) >> 7);
+//            b = _y + ((227 * (_u - 128)) >> 7);
+//            */
+//                r = _y + 1.5075 *(_v - 128);
+//                g = _y - 0.8455 *(_u - 128) - 0.8169 *(_v - 128);
+//                b = _y + 1.879 * (_u - 128);
+//
+//                r = r<0 ? 0 : r;r = r>255 ? 255 : r;
+//                g = g<0 ? 0 : g;g = g>255 ? 255 : g;
+//                b = b<0 ? 0 : b;b = b>255 ? 255 : b;
+//                dst[0] = b;
+//                dst[1] = g;
+//                dst[2] = r;
+//                dst[3] = 0xFF;
+//
+//                y++;
+//                dst += 4;
+//                _y = y[0];
+//
+//                r = _y + 1.5075 * (_v - 128);
+//                g = _y - 0.8455 *(_u - 128) - 0.8169 *(_v - 128);
+//                b = _y + 1.879 * (_u - 128);
+//
+//                r = r<0 ? 0 : r;r = r>255 ? 255 : r;
+//                g = g<0 ? 0 : g;g = g>255 ? 255 : g;
+//                b = b<0 ? 0 : b;b = b>255 ? 255 : b;
+//
+//                dst[0] = b;
+//                dst[1] = g;
+//                dst[2] = r;
+//                dst[3] = 0xFF;
+//                y++;
+//                uv += 2;
+//                dst += 4;
+//
+//                count -= 2;
+//            }
+//            if(count > 0)
+//            {
+//                _y = y[0];
+//
+//                if(frameType == CAPTURE_FRAME_TYPE_NV12)//nv12
+//                {
+//                    _v = uv[0];
+//                    _u = uv[1];
+//                }
+//                else //nv21
+//                {
+//                    _u = uv[0];
+//                    _v = uv[1];
+//                }
+//
+//            /*
+//            r = _y + ((179 * (_v - 128)) >> 7);
+//            g = _y - ((43 * (_u - 128) - 91 * (_v - 128)) >> 7);
+//            b = _y + ((227 * (_u - 128)) >> 7);
+//            */
+//                r = _y + 1.5075 * (_v - 128);
+//                g = _y - 0.8455 *(_u - 128) - 0.8169 *(_v - 128);
+//                b = _y + 1.879 * (_u - 128);
+//
+//                r = r<0 ? 0 : r;r = r>255 ? 255 : r;
+//                g = g<0 ? 0 : g;g = g>255 ? 255 : g;
+//                b = b<0 ? 0 : b;b = b>255 ? 255 : b;
+//                dst[0] = b;
+//                dst[1] = g;
+//                dst[2] = r;
+//                dst[3] = 0xFF;
+//            }
+//        }
+
+    }
+
 }
 
 
