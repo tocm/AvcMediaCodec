@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
+import com.andy.mymediacodec.constants.Define;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AudioUtils;
@@ -19,12 +20,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static com.andy.mymediacodec.utils.AudioUtils.AAC_ADTS_HEADER_BYTE_LEN;
+
 /**
  * Created by Andy.chen on 2017/7/14.
  * Encode AAC needs use MediaCodec
  */
 
-public class EncodeAAC implements AudioEncode {
+public class EncodeAAC implements IAudioEncode {
 
     private final static String TAG = EncodeAAC.class.getSimpleName();
     private MediaCodec mEncoder;
@@ -32,13 +35,15 @@ public class EncodeAAC implements AudioEncode {
     private AACFrameListener mAACFrameListener;
     private boolean mEncodeRunning;
     private BufferedOutputStream mFileOutputSteamAAC;
+    private MediaCodec.BufferInfo mBufferInfo;
+    private byte[] aacPacketBuf;
 
     public EncodeAAC(final FrameBufferQueue srcPcmFrameQueue, AACFrameListener frameListener) {
         mSrcPcmFrameQueue = srcPcmFrameQueue;
         mAACFrameListener = frameListener;
-        configEncoder();
+
         try {
-            String fileFolderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
+            String fileFolderPath = Environment.getExternalStorageDirectory() + File.separator + Define.SDCARD_TEMP_FILE_DIR;
             File fileFolder = FileUtils.createFolder(fileFolderPath);
             File file = FileUtils.createFile(fileFolder, AudioUtils.SDCARD_TEMP_FILE_NAME_AAC);
             mFileOutputSteamAAC = new BufferedOutputStream(new FileOutputStream(file));
@@ -48,6 +53,7 @@ public class EncodeAAC implements AudioEncode {
     }
     @Override
     public void startEncodeData() {
+        configEncoder();
         mEncodeRunning = true;
         new Thread(new AACEncoderThread()).start();
     }
@@ -81,8 +87,10 @@ public class EncodeAAC implements AudioEncode {
             mEncoder.configure(mediaFormat,null,null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             //启动编码器
             mEncoder.start();
-
+            mBufferInfo = new MediaCodec.BufferInfo();
             Log.d(TAG,"AAC Encoder configure info "+mEncoder.getOutputFormat());
+
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -99,7 +107,7 @@ public class EncodeAAC implements AudioEncode {
                 if(mSrcPcmFrameQueue.isEmptyQueue()) {
                     Log.d(TAG,"null data continue");
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(16);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -111,18 +119,18 @@ public class EncodeAAC implements AudioEncode {
                     String uid = frameEntity.getId();
                     byte[] pcmBuf = frameEntity.getBuf();
                     int size = frameEntity.getSize();
-                    Log.d(TAG,"get queue data id = "+uid +",size = "+size);
                     encoder(pcmBuf);
                 }
 
                 try {
-                    Thread.sleep(5);
+                    Thread.sleep(16);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         }
     }
+
 
     public void encoder(byte[] pcmBuf) {
         if(pcmBuf == null || pcmBuf.length == 0) {
@@ -132,8 +140,8 @@ public class EncodeAAC implements AudioEncode {
         Log.d(TAG,"pcm src buffer size = "+pcmBuf.length);
         //get the index of an input buffer to be filled with valid data
         int inputBufferIndex = mEncoder.dequeueInputBuffer(-1);
-        Log.d(TAG,"AAC dequeueInputBuffer = "+inputBufferIndex);
-        if(inputBufferIndex >= 1) {
+        Log.d(TAG,"AAC encoder dequeueInputBuffer = "+inputBufferIndex);
+        if(inputBufferIndex >= 0) {
             ByteBuffer inputBuffer = null;
             // since API 21 we have new API to use
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -144,21 +152,23 @@ public class EncodeAAC implements AudioEncode {
             }
             if(inputBuffer != null) {
                 inputBuffer.clear();
-                inputBuffer.limit(pcmBuf.length);
                 inputBuffer.put(pcmBuf);
-                mEncoder.queueInputBuffer(inputBufferIndex,0,pcmBuf.length,0,0);;
+                inputBuffer.limit(pcmBuf.length);
+                mEncoder.queueInputBuffer(inputBufferIndex,0,pcmBuf.length, System.nanoTime(),0);;
             }
 
         }
 
-        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
         //get the encoder queue buffer index with valid data
-        int outputBufferIndex =  mEncoder.dequeueOutputBuffer(bufferInfo, AvcUtils.TIMEOUT_US);
+        int outputBufferIndex =  mEncoder.dequeueOutputBuffer(mBufferInfo, -1);
         Log.d(TAG,"AAC encoder outputBufferIndex = "+outputBufferIndex);
         while (outputBufferIndex >= 0) {
-            int pcmOutDataSize = bufferInfo.size;
-            int aacPacketSize = pcmOutDataSize + AudioUtils.AAC_ADTS_HEADER_BYTE_LEN; // AAC header: ADTS: 7byte
-            byte[] aacPacketBuf = new byte[aacPacketSize];
+            int pcmOutDataSize = mBufferInfo.size;
+            int aacPacketSize = pcmOutDataSize + AAC_ADTS_HEADER_BYTE_LEN; // AAC header: ADTS: 7byte
+            if(aacPacketBuf == null || aacPacketBuf.length < aacPacketSize) {
+                aacPacketBuf = new byte[aacPacketSize];
+            }
             //get the encoder output buffer data
             ByteBuffer outputBuffers = null;
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -168,35 +178,38 @@ public class EncodeAAC implements AudioEncode {
                 //get the input buffer which can push the pcm data
                 outputBuffers = mEncoder.getOutputBuffer(outputBufferIndex);
             }
-            //new a data buffer for encoder data
-            byte[] outputDataBuffer = new byte[pcmOutDataSize];
-            outputBuffers.get(outputDataBuffer);
-            outputBuffers.clear();
-            //add ADTS header
-            AudioUtils.addAACADTSHeader(aacPacketBuf,aacPacketBuf.length);
-            //copy pcm frame buffer to aac buffer
-            System.arraycopy(outputDataBuffer,0,aacPacketBuf,AudioUtils.AAC_ADTS_HEADER_BYTE_LEN,pcmOutDataSize);
 
+            //get the original output data buffer frame
+            outputBuffers.get(aacPacketBuf, AAC_ADTS_HEADER_BYTE_LEN , pcmOutDataSize);
+            outputBuffers.clear();
+
+            //add ADTS header 7byte
+            AudioUtils.addAACADTSHeader(aacPacketBuf,0, pcmOutDataSize);//Note: this len is pcm output buffer size
+
+         //   FileUtils.printSystemByteLog("AFTER ENCODER : ", aacPacketBuf, aacPacketSize);
             //save to local aac file
             if(mFileOutputSteamAAC != null) {
                 try {
-                    mFileOutputSteamAAC.write(aacPacketBuf);
+                    mFileOutputSteamAAC.write(aacPacketBuf, AAC_ADTS_HEADER_BYTE_LEN, aacPacketSize - AAC_ADTS_HEADER_BYTE_LEN);
                     mFileOutputSteamAAC.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
 
+            AvcUtils.printByteData("Encoded aac :: ", aacPacketBuf);
             //notify the AAC frame buffer to top layer
             if(mAACFrameListener != null) {
                 FrameEntity frameEntity = new FrameEntity();
+                frameEntity.setId("AAC ::");
                 frameEntity.setBuf(aacPacketBuf);
                 frameEntity.setSize(aacPacketSize);
                 frameEntity.setTimestamp(System.currentTimeMillis());
                 mAACFrameListener.callbackADTSFrame(frameEntity);
             }
+
             mEncoder.releaseOutputBuffer(outputBufferIndex,false);
-            outputBufferIndex =  mEncoder.dequeueOutputBuffer(bufferInfo, AvcUtils.TIMEOUT_US);
+            outputBufferIndex =  mEncoder.dequeueOutputBuffer(mBufferInfo, 0);
 
         }
 

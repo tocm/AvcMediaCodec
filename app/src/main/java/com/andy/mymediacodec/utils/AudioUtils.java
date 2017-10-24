@@ -127,19 +127,19 @@ public class AudioUtils {
      * <p>
      * Note the packetLen must count in the ADTS header itself.
      **/
-    public static void addAACADTSHeader(byte[] packet, int packetLen) {
+    public static void addAACADTSHeader(byte[] packet, int offset, int packetLen) {
         int profile = 2;  //AAC LC
         int freqIdx = 4;  //44.1KHz
         int chanCfg = 2;  //CPE
 
         // fill in ADTS data
-        packet[0] = (byte) 0xFF;
-        packet[1] = (byte) 0xF9;
-        packet[2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
-        packet[3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
-        packet[4] = (byte) ((packetLen & 0x7FF) >> 3);
-        packet[5] = (byte) (((packetLen & 7) << 5) + 0x1F);
-        packet[6] = (byte) 0xFC;
+        packet[offset] = (byte) 0xFF;
+        packet[offset+1] = (byte) 0xF9;
+        packet[offset+2] = (byte) (((profile - 1) << 6) + (freqIdx << 2) + (chanCfg >> 2));
+        packet[offset+3] = (byte) (((chanCfg & 3) << 6) + (packetLen >> 11));
+        packet[offset+4] = (byte) ((packetLen & 0x7FF) >> 3);
+        packet[offset+5] = (byte) (((packetLen & 7) << 5) + 0x1F);
+        packet[offset+6] = (byte) 0xFC;
     }
 
     public static void addAACADIFHeader(byte[] packet, int packetLen){
@@ -223,11 +223,13 @@ public class AudioUtils {
     }
 
     public static int findAACADTSHeaderIndex(byte[] buf, int offset, int size){
+        System.out.println("==> findAACADTSHeaderIndex buf size = "+buf.length +", offset = "+offset +", size = "+size);
         if(buf != null) {
             if(buf.length > 7) {
                 int endIndex = size - 7;
                 for(int i= offset; i< endIndex; i++) {
-                    if ((buf[i] & 0xFF) == 0xFF && (buf[i+1] & 0xF0) == 0xF0) {
+//                    if ((buf[i] & 0xFF) == 0xFF && (buf[i+1] & 0xF0) == 0xF0) {
+                        if ((buf[i] & 0xFF) == 0xFF && (buf[i+1] & 0xFF) == 0xF9) {
                         return i;
                     }
                 }

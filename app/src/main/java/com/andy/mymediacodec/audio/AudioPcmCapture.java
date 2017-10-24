@@ -1,18 +1,18 @@
 package com.andy.mymediacodec.audio;
 
+import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Environment;
 import android.util.Log;
 
 import com.andy.mymediacodec.audio.decoder.AACDecoder;
-import com.andy.mymediacodec.audio.encoder.AudioEncode;
+import com.andy.mymediacodec.audio.encoder.IAudioEncode;
 import com.andy.mymediacodec.audio.encoder.EncodeAAC;
 import com.andy.mymediacodec.audio.encoder.EncodeWave;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AudioUtils;
-import com.andy.mymediacodec.utils.AvcUtils;
 import com.andy.mymediacodec.utils.FileUtils;
 
 import java.io.BufferedOutputStream;
@@ -23,6 +23,7 @@ import java.io.IOException;
 import static com.andy.mymediacodec.audio.AudioPcmCapture.RECORD_STATUS.RECORD_STATUS_IDLE;
 import static com.andy.mymediacodec.audio.AudioPcmCapture.RECORD_STATUS.RECORD_STATUS_RUNNING;
 import static com.andy.mymediacodec.audio.AudioPcmCapture.RECORD_STATUS.RECORD_STATUS_STOP;
+import static com.andy.mymediacodec.constants.Define.SDCARD_TEMP_FILE_DIR;
 
 /**
  * Created by Andy.chen on 2017/7/12.
@@ -39,8 +40,8 @@ public class AudioPcmCapture {
     private FrameBufferQueue mAACFrameQueue;
     private AACDecoder mDecoderAAC;
 
-    private AudioEncode mAudioEncodeWave;
-    private AudioEncode mEncoderAAC;
+    private IAudioEncode mAudioEncodeWave;
+    private IAudioEncode mEncoderAAC;
     enum RECORD_STATUS {
         RECORD_STATUS_IDLE,
         RECORD_STATUS_RUNNING,
@@ -53,7 +54,7 @@ public class AudioPcmCapture {
     }
 
     private void createAudioPCMFile() {
-        String folderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
+        String folderPath = Environment.getExternalStorageDirectory() + File.separator + SDCARD_TEMP_FILE_DIR;
         File fileFolder = FileUtils.createFolder(folderPath);
         try {
             mFileRecordPcmPath = FileUtils.createFile(fileFolder, AudioUtils.SDCARD_TEMP_FILE_NAME_PCM);
@@ -71,7 +72,7 @@ public class AudioPcmCapture {
             mBufferSize =AudioUtils.getAudioBufferSize();
             Log.d(TAG,"AudioRecord.getMinBufferSize = "+mBufferSize);
 
-            mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, AudioUtils.AUDIO_SAMPLE_RATE_HZ, AudioUtils.AUDIO_CHANNEL, AudioUtils.AUDIO_FORMAT, mBufferSize);
+            mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, AACDecoder.AudioCfg.sampleRete, AudioFormat.CHANNEL_IN_STEREO, AudioUtils.AUDIO_FORMAT, mBufferSize);
             //create encode
             createSupportEncoder();
         }
@@ -85,7 +86,7 @@ public class AudioPcmCapture {
             public void callbackADTSFrame(FrameEntity frameEntity) {
                 //get the encoder AAC ADTS FRAME buffer
                 if(frameEntity != null) {
-                    frameEntity.setId("Audio AAC");
+//                    frameEntity.setId("Audio AAC");
                     if(mAACFrameQueue == null) {
                         mAACFrameQueue = new FrameBufferQueue();
                         mDecoderAAC = new AACDecoder(mAACFrameQueue);
@@ -143,10 +144,10 @@ public class AudioPcmCapture {
 
                     if(mSrcPcmFrameQueue != null) {
                         FrameEntity frameEntity = new FrameEntity();
-                        frameEntity.setId("audio pcm");
+                        frameEntity.setId("PCM ::");
                         frameEntity.setBuf(srcAudioPcmBuffer);
                         frameEntity.setSize(mBufferSize);
-                        Log.d(TAG,"audio push pcm frame data size = "+srcAudioPcmBuffer.length);
+                     //   Log.d(TAG,"audio push pcm frame data size = "+srcAudioPcmBuffer.length);
                         mSrcPcmFrameQueue.pushFrameData(frameEntity);
                     }
 
@@ -159,7 +160,7 @@ public class AudioPcmCapture {
                     e.printStackTrace();
                 }
                 try {
-                    Thread.sleep(50);
+                    Thread.sleep(16);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

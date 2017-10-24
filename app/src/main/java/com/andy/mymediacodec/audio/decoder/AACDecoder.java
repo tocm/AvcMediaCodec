@@ -5,8 +5,8 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.util.Log;
 
-import com.andy.mymediacodec.audio.AudioPlayThread;
 import com.andy.mymediacodec.audio.AudioTrackPcmPlayer;
+import com.andy.mymediacodec.constants.Define;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AudioUtils;
@@ -30,7 +30,9 @@ public class AACDecoder {
     private boolean mRenderRunning;
     private boolean mConfigured;
 
-    private AudioPlayThread mAudioPlayThread;
+    private byte[] mOutputDataBuffer = null;
+    private MediaCodec.BufferInfo mBufferInfo;
+
     public static class AudioCfg {
         public static String mimeType = "audio/mp4a-latm";
         public static int channel = 2;
@@ -47,8 +49,6 @@ public class AACDecoder {
     public void start(){
         Log.d(TAG, "start");
         if(mFrameBufferQueue != null) {
-//                mAudioPlayThread = new AudioPlayThread(mFrameBufferQueue);
-//                mAudioPlayThread.start();
 
             startRender();
             startDecoder();
@@ -66,26 +66,16 @@ public class AACDecoder {
 
         AvcUtils.printByteData("AAC ADTS",headerADTS.array());
         try {
-            /*
-            MediaFormat mediaFormat = MediaFormat.createAudioFormat(AudioUtils.AUDIO_MIME_TYPE,AudioUtils.AUDIO_SAMPLE_RATE_HZ,AudioUtils.AUDIO_FORMAT);
-            //optional, if decoding AAC audio content, setting this key to 1 indicates that each audio frame is prefixed by the ADTS header.
-            mediaFormat.setInteger(MediaFormat.KEY_IS_ADTS,0);
-            AvcUtils.printByteData("ADTS HEADER :: ", headerADTS.array());
-            mediaFormat.setByteBuffer("csd-0",ByteBuffer.wrap(new byte[]{0x12,0x10}));
-            String mime = mediaFormat.getString(MediaFormat.KEY_MIME);
-            Log.d(TAG,"AAC decoder mime = "+mime);
-
-            mDecoder = MediaCodec.createDecoderByType(mime);
-
-        */
             mDecoder = MediaCodec.createDecoderByType(AudioCfg.mimeType);
             MediaFormat format = new MediaFormat();
             format.setString(MediaFormat.KEY_MIME, AudioCfg.mimeType);
             format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, AudioCfg.channel);
             format.setInteger(MediaFormat.KEY_SAMPLE_RATE, AudioCfg.sampleRete);
             format.setInteger(MediaFormat.KEY_BIT_RATE, AudioCfg.bitRate);
-            format.setInteger(MediaFormat.KEY_IS_ADTS, 0);
+
             format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+
+            format.setInteger(MediaFormat.KEY_IS_ADTS,  Define.AAC_ENABLE_HEADER_CFG ? 1 : 0);
             format.setByteBuffer("csd-0", headerADTS);
             mDecoder.configure(format, null, null, 0);
 
@@ -112,7 +102,6 @@ public class AACDecoder {
         mDecoderRunning = true;
 
         mAudioTrackPcmPlayer = new AudioTrackPcmPlayer();
-//
         DecoderAACThread decoderAACThread = new DecoderAACThread();
         new Thread(decoderAACThread).start();
 
@@ -129,35 +118,38 @@ public class AACDecoder {
 
     /**
      * decoder at thread loop
-     * @param frame
+     * @param frameBuf
      */
-    private void pushDecoder(byte[] frame){
-        if(frame == null) {
+    private void pushDecoder(byte[] frameBuf, int frameSize){
+        if(frameBuf == null) {
             return;
         }
-        Log.d(TAG,"AAC frame size = "+frame.length);
+        Log.d(TAG,"AAC frame size = "+frameSize);
         //AvcUtils.printByteData("AAC::src ",frame);
         //looping to decode a frame until decode a frame finish;
        // while (mConfigured){
             int inputIndex = -1;
-            inputIndex = mDecoder.dequeueInputBuffer(16);
+            inputIndex = mDecoder.dequeueInputBuffer(0);
             Log.d(TAG,"aac decoder dequeueInputBuffer = "+ inputIndex);
             if(inputIndex >= 0) {
                 ByteBuffer byteBuffer = mDecoder.getInputBuffer(inputIndex);
                 if(byteBuffer != null) {
                     byteBuffer.clear();
-                //    AvcUtils.printByteData("AAC::dst decoder ", Arrays.copyOfRange(frame,7,frame.length));
-                    byteBuffer.put(frame, 7, frame.length - 7);
-                    mDecoder.queueInputBuffer(inputIndex,0,frame.length - 7,0,0);
-                  //  break;
+//                    AvcUtils.printByteData("AAC::dst decoder ", Arrays.copyOfRange(frame,7,frame.length));
+                    if(Define.AAC_ENABLE_HEADER_CFG) {
+                        byteBuffer.put(frameBuf, 0, frameSize);
+                        mDecoder.queueInputBuffer(inputIndex, 0, frameSize, 0, 0);
+                    } else {
+                        byteBuffer.put(frameBuf, 7, frameSize - 7);
+                        mDecoder.queueInputBuffer(inputIndex, 0, frameSize - 7, 0, 0);
+                    }
                 }
             }
         //}
 
     }
 
-    private byte[] mOutputDataBuffer = null;
-    private MediaCodec.BufferInfo mBufferInfo;
+
     private void render() throws Exception {
         int outputIndex = mDecoder.dequeueOutputBuffer(mBufferInfo,60);
         Log.d(TAG," render BEGIN outputIndex = "+outputIndex);
@@ -197,6 +189,7 @@ public class AACDecoder {
                 FrameEntity frameEntity = mFrameBufferQueue.pollFrameData();
                 if(frameEntity != null) {
                     byte[] frameBuf = frameEntity.getBuf();
+                    int frameSize = frameEntity.getSize();
                     if(mConfigured == false) {
                         //get the ADTS Header buffer and set configure
                         ByteBuffer adtsHeaderBuffer = AudioUtils.getAACADTSHeader(frameBuf);
@@ -216,7 +209,7 @@ public class AACDecoder {
                         continue;
                     }
 
-                    pushDecoder(frameBuf);
+                    pushDecoder(frameBuf,frameSize);
 
 
 
@@ -265,9 +258,6 @@ public class AACDecoder {
     }
 
     private void stopDecoder() throws Exception{
-        if(mAudioPlayThread != null) {
-            mAudioPlayThread.quit();
-        }
         if(mDecoder != null) {
             mDecoder.flush();
             mDecoder.stop();

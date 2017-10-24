@@ -20,6 +20,8 @@ import java.nio.ByteBuffer;
 
 import static android.media.MediaCodec.BUFFER_FLAG_CODEC_CONFIG;
 import static android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME;
+import static com.andy.mymediacodec.constants.Define.SDCARD_TEMP_FILE_DIR;
+import static com.andy.mymediacodec.constants.Define.SDCARD_TEMP_FILE_NAME;
 
 /**
  * H264/AVC Encode
@@ -50,10 +52,10 @@ public class H264Encoder {
     }
 
     private void createDecodeH264File() {
-        String folderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
+        String folderPath = Environment.getExternalStorageDirectory() + File.separator + SDCARD_TEMP_FILE_DIR;
         File fileFolder = FileUtils.createFolder(folderPath);
         try {
-            File file = FileUtils.createFile(fileFolder, AvcUtils.SDCARD_TEMP_FILE_NAME);
+            File file = FileUtils.createFile(fileFolder, SDCARD_TEMP_FILE_NAME);
             mOutputStream = new BufferedOutputStream(new FileOutputStream(file));
             Log.i(TAG, "mOutputStream initialized");
         } catch (Exception e) {

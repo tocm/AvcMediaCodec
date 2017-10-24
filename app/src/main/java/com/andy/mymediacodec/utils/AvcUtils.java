@@ -28,11 +28,7 @@ import java.util.Arrays;
 public final class AvcUtils {
 
     private final static String TAG = AvcUtils.class.getSimpleName();
-    public final static String DECODE_LOCAL_FILE_PATH_H264 = Environment.getExternalStorageDirectory() + "/AvcEncode/testEncode.h264";
-    public final static String DECODE_LOCAL_FILE_PATH_AAC = Environment.getExternalStorageDirectory() + "/AvcEncode/test.aac";
-    public final static String SDCARD_TEMP_FILE_DIR = "AvcEncode";
-    public final static String SDCARD_TEMP_FILE_NAME = "testEncode.h264";
-    public final static String SDCARD_TEMP_FILE_NAME_YUV = "test_420_1280_720.yuv";
+
 
     public final static int WIDTH = 1280;
     public final static int HEIGHT = 720;

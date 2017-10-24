@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import com.andy.mymediacodec.audio.AudioPcmCapture;
 import com.andy.mymediacodec.audio.decoder.AACDecoder;
+import com.andy.mymediacodec.constants.Define;
 import com.andy.mymediacodec.entity.FrameBufferQueue;
 import com.andy.mymediacodec.entity.FrameEntity;
 import com.andy.mymediacodec.utils.AvcUtils;
@@ -35,8 +36,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import static com.andy.mymediacodec.utils.AvcUtils.DECODE_LOCAL_FILE_PATH_AAC;
-import static com.andy.mymediacodec.utils.AvcUtils.DECODE_LOCAL_FILE_PATH_H264;
+import static com.andy.mymediacodec.constants.Define.DECODE_LOCAL_FILE_PATH_AAC;
+
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
@@ -98,6 +99,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startCamera();
+
+//                AudioRecordThread audioRecordThread = new AudioRecordThread(null);
+//                audioRecordThread.start();
             }
         });
 
@@ -107,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 mDecodingLocStreamFlag = !mDecodingLocStreamFlag;
                 if(mDecodingLocStreamFlag) {
-              //      decodeAVCFromLocal();
+                    decodeAVCFromLocal();
 
                     decodeAACFromLocal();
                 }else {
@@ -127,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             mBtnEncodeCameraYuv.setEnabled(true);
 
-            File file = new File(DECODE_LOCAL_FILE_PATH_H264);
+            File file = new File(Define.DECODE_LOCAL_FILE_PATH_H264);
             if (file.exists()) {
                 mBtnDecoderLocVideo.setEnabled(true);
             }
@@ -137,7 +141,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void decodeAACFromLocal() {
         Log.d(TAG,"-----decodeAACFromLocal -------");
-
 
         new Thread(new Runnable() {
             @Override
@@ -165,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void decodeAVCFromLocal() {
-        mH264LocFileStream = AvcUtils.getFileInputStream(DECODE_LOCAL_FILE_PATH_H264);
+        mH264LocFileStream = AvcUtils.getFileInputStream(Define.DECODE_LOCAL_FILE_PATH_H264);
         if (mH264LocFileStream == null) {
             Toast.makeText(MainActivity.this, "Please record a video from camera first", Toast.LENGTH_SHORT);
             return;
@@ -283,10 +286,10 @@ public class MainActivity extends AppCompatActivity {
     private BufferedOutputStream mOutputStreamYuv;
 
     private void createRawYuvFile() {
-        String folderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
+        String folderPath = Environment.getExternalStorageDirectory() + File.separator + Define.SDCARD_TEMP_FILE_DIR;
         File fileFolder = FileUtils.createFolder(folderPath);
         try {
-            File file = FileUtils.createFile(fileFolder, AvcUtils.SDCARD_TEMP_FILE_NAME_YUV);
+            File file = FileUtils.createFile(fileFolder, Define.SDCARD_TEMP_FILE_NAME_YUV);
             mOutputStreamYuv = new BufferedOutputStream(new FileOutputStream(file));
             Log.i(TAG, "mOutputStreamYuv initialized");
         } catch (Exception e) {
@@ -335,6 +338,7 @@ public class MainActivity extends AppCompatActivity {
 
                     if (mAudioPcmCapture != null)
                         mAudioPcmCapture.startRecord();
+
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -388,9 +392,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void startDecoder() {
         if (mH264Decoder == null) {
-//            mH264DecoderQueue = new FrameBufferQueue();
-//            mH264Decoder = new H264Decoder(mSurfaceRender, mH264DecoderQueue);
-//            mH264Decoder.startDecoderThread();
+            mH264DecoderQueue = new FrameBufferQueue();
+            mH264Decoder = new H264Decoder(mSurfaceRender, mH264DecoderQueue);
+            mH264Decoder.startDecoderThread();
         }
 
         if(mAACDecoder == null) {

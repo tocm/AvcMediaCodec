@@ -4,7 +4,6 @@ import android.os.Environment;
 import android.util.Log;
 
 import com.andy.mymediacodec.utils.AudioUtils;
-import com.andy.mymediacodec.utils.AvcUtils;
 import com.andy.mymediacodec.utils.FileUtils;
 
 import java.io.File;
@@ -12,6 +11,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import static com.andy.mymediacodec.constants.Define.SDCARD_TEMP_FILE_DIR;
 import static com.andy.mymediacodec.utils.AudioUtils.AUDIO_CHANNEL;
 import static com.andy.mymediacodec.utils.AudioUtils.AUDIO_SAMPLE_RATE_HZ;
 
@@ -27,7 +27,7 @@ import static com.andy.mymediacodec.utils.AudioUtils.AUDIO_SAMPLE_RATE_HZ;
 
  */
 
-public class EncodeWave implements AudioEncode {
+public class EncodeWave implements IAudioEncode {
     private final static String TAG = EncodeWave.class.getSimpleName();
 
     private FileOutputStream mWavOutStream;
@@ -42,7 +42,7 @@ public class EncodeWave implements AudioEncode {
     }
 
     private void createAudioEncodeFile() {
-        String folderPath = Environment.getExternalStorageDirectory() + File.separator + AvcUtils.SDCARD_TEMP_FILE_DIR;
+        String folderPath = Environment.getExternalStorageDirectory() + File.separator + SDCARD_TEMP_FILE_DIR;
         File fileFolder = FileUtils.createFolder(folderPath);
         try {
             File file = FileUtils.createFile(fileFolder, AudioUtils.SDCARD_TEMP_FILE_NAME_WAV);
