@@ -194,7 +194,7 @@ public class EncodeAAC implements IAudioEncode {
             outputBuffers.clear();
 
             //add ADTS header 7byte
-            AudioUtils.addAACADTSHeader(aacPacketBuf,0, aacPacketSize);//Note: this len is pcm output buffer size
+            AudioUtils.addAACADTSHeader(aacPacketBuf,0, aacPacketSize);//Note: this len is full packet buffer size
 
          //   FileUtils.printSystemByteLog("AFTER ENCODER : ", aacPacketBuf, aacPacketSize);
             //save to local aac file

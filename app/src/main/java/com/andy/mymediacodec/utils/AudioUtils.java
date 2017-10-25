@@ -126,7 +126,11 @@ public class AudioUtils {
      * AAC data.
      * <p>
      * Note the packetLen must count in the ADTS header itself.
-     **/
+     *
+     * @param packet data buffer
+     * @param offset the start offset witch set the adts header
+     * @param packetLen this len is full packet buffer size
+     */
     public static void addAACADTSHeader(byte[] packet, int offset, int packetLen) {
         int profile = 2;  //AAC LC
         int freqIdx = 4;  //44.1KHz

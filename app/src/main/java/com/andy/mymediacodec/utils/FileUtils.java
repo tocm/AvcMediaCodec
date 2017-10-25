@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import static android.content.Context.MODE_PRIVATE;
+import static com.andy.mymediacodec.constants.Define.SYSTEM_LOG_ENABLE;
 
 /**
  * Created by Andy.chen on 2017/3/16
@@ -261,7 +262,7 @@ public class FileUtils {
 //        testByteBufferAPI();
     }
 
-    private final static boolean SYSTEM_LOG_ENABLE = false;
+
     public static void printSystemByteLog(String key, byte[] buf, int size) {
         if(SYSTEM_LOG_ENABLE) {
             if (buf != null && buf.length > 0) {
