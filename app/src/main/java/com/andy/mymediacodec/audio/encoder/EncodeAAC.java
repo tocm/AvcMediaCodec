@@ -61,12 +61,22 @@ public class EncodeAAC implements IAudioEncode {
     @Override
     public void stop() {
         mEncodeRunning = false;
+        if(mFileOutputSteamAAC != null) {
+            try {
+                mFileOutputSteamAAC.close();
+                mFileOutputSteamAAC = null;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
         try {
             if(mEncoder != null) {
                 mEncoder.flush();
                 mEncoder.stop();
                 mEncoder.release();
             }
+
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -184,13 +194,13 @@ public class EncodeAAC implements IAudioEncode {
             outputBuffers.clear();
 
             //add ADTS header 7byte
-            AudioUtils.addAACADTSHeader(aacPacketBuf,0, pcmOutDataSize);//Note: this len is pcm output buffer size
+            AudioUtils.addAACADTSHeader(aacPacketBuf,0, aacPacketSize);//Note: this len is pcm output buffer size
 
          //   FileUtils.printSystemByteLog("AFTER ENCODER : ", aacPacketBuf, aacPacketSize);
             //save to local aac file
             if(mFileOutputSteamAAC != null) {
                 try {
-                    mFileOutputSteamAAC.write(aacPacketBuf, AAC_ADTS_HEADER_BYTE_LEN, aacPacketSize - AAC_ADTS_HEADER_BYTE_LEN);
+                    mFileOutputSteamAAC.write(aacPacketBuf, 0, aacPacketSize);
                     mFileOutputSteamAAC.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
